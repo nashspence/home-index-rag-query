@@ -22,7 +22,9 @@ def format_sources(hits: list[dict]) -> str:
 def main():
     st.title("Home Index RAG")
     query = st.text_input("Ask a question:")
-    model_name = st.sidebar.text_input("HuggingFace model", value=settings.llm_model_name)
+    model_name = st.sidebar.text_input(
+        "HuggingFace model", value=settings.llm_model_name
+    )
 
     if st.sidebar.button("Load model"):
         llm = load_llm(model_name)

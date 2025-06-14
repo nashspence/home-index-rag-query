@@ -11,6 +11,8 @@ from langchain_core.stores import BaseStore
 from .config import settings
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
+from urllib.parse import urljoin
+from datetime import datetime, UTC
 
 _client = None
 
@@ -65,6 +67,48 @@ class MetadataRetriever(BaseRetriever):
         return [Document(page_content=h.get("content", ""), metadata=h) for h in hits]
 
 
+class CanonicalURLRetriever(BaseRetriever):
+    """Wrap a retriever and normalise file metadata for the LLM."""
+
+    wrapped: BaseRetriever
+    base_url: str
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def __init__(self, wrapped: BaseRetriever, base_url: str) -> None:
+        super().__init__(wrapped=wrapped, base_url=base_url.rstrip("/"))
+
+    def _get_relevant_documents(self, query: str, run_manager=None):
+        docs = self.wrapped.get_relevant_documents(query)
+        for d in docs:
+            paths_map = d.metadata.get("paths")
+            if isinstance(paths_map, dict):
+                canonical_url = None
+                latest = None
+                urls = []
+                for path, mtime in paths_map.items():
+                    abs_url = urljoin(self.base_url + "/", path.lstrip("/"))
+                    urls.append(abs_url)
+                    if latest is None or mtime > latest:
+                        canonical_url = abs_url
+                        latest = mtime
+                d.metadata["paths"] = urls
+                if canonical_url is not None:
+                    d.metadata["url"] = canonical_url
+                    if latest is not None:
+                        d.metadata["mtime"] = (
+                            datetime.fromtimestamp(latest, UTC)
+                            .strftime("%a %Y-%m-%d %H:%M:%SZ")
+                        )
+            else:
+                path = d.metadata.get("path")
+                if path:
+                    abs_url = urljoin(self.base_url + "/", str(path).lstrip("/"))
+                    d.metadata["url"] = abs_url
+        return docs
+
+
 def get_meta_retriever():
     """Return a retriever for lexical search of file metadata."""
     return MetadataRetriever()
@@ -92,8 +136,9 @@ def get_parent_retriever():
         embedding_function=embeddings.embed_query,
     )
     meta_store = MeiliDocStore(get_meili_client(), settings.files_index)
-    return ParentDocumentRetriever(
+    parent = ParentDocumentRetriever(
         vectorstore=chunks_vs,
         docstore=meta_store,
         id_key="file_id",
     )
+    return CanonicalURLRetriever(parent, base_url=settings.files_domain)
