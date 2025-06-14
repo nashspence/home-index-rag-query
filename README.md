@@ -1,1 +1,7 @@
-# home-index-rag-query
+- default interface for https://github.com/nashspence/home-index
+- default configuration setup for MacBook M4 Pro with 24gb of RAM
+- uses streamlit for ui
+- uses langchain with Mistral for optimal optimized for accuracy, with compromise for reasonable speed
+- langchain connects to meilisearch with 2 indexes: files, file_chunks
+- files index is file metadata and plaintext content for text search
+- file_chunks is content chunks with vector embeddings, each chunk has the id from the files index of the file that the chunk is from
