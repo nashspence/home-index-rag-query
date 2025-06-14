@@ -8,5 +8,5 @@ from app.llm import load_llm
 
 def test_load_llm_small_model():
     llm = load_llm("sshleifer/tiny-gpt2")
-    text = llm("Hello world")
+    text = llm.invoke("Hello world")
     assert isinstance(text, str)

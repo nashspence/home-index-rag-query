@@ -41,6 +41,7 @@ def main():
                     "retriever": get_vector_retriever(),
                 },
             ],
+            default_retriever=get_vector_retriever(),
         )
         st.session_state["chain"] = chain
         st.success(f"Loaded model {model_name}")
