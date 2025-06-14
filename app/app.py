@@ -1,12 +1,11 @@
 import streamlit as st
 
-from langchain.chains.router import MultiRetrievalQAChain
+from langchain.chains import RetrievalQAWithSourcesChain
 
 from .config import settings
 from .database import (
     search_index,
-    get_meta_retriever,
-    get_vector_retriever,
+    get_parent_retriever,
 )
 from .llm import load_llm
 
@@ -27,21 +26,8 @@ def main():
 
     if st.sidebar.button("Load model"):
         llm = load_llm(model_name)
-        chain = MultiRetrievalQAChain.from_retrievers(
-            llm=llm,
-            retriever_infos=[
-                {
-                    "name": "metadata",
-                    "description": "file metadata search",
-                    "retriever": get_meta_retriever(),
-                },
-                {
-                    "name": "semantic",
-                    "description": "content chunk semantic search",
-                    "retriever": get_vector_retriever(),
-                },
-            ],
-            default_retriever=get_vector_retriever(),
+        chain = RetrievalQAWithSourcesChain.from_chain_type(
+            llm, retriever=get_parent_retriever()
         )
         st.session_state["chain"] = chain
         st.success(f"Loaded model {model_name}")
