@@ -6,8 +6,8 @@ It targets a default setup similar to a MacBook M4 Pro with 24 GB of
 RAM but can be configured for other environments.
 
 The UI is built with **Streamlit** and uses **LangChain** with a
-HuggingFace model for question answering. Retrieval combines metadata and
-semantic searches via `MultiRetrievalQAChain`. Data is stored in
+HuggingFace model for question answering. Retrieval links content chunks
+back to their source documents via `ParentDocumentRetriever`. Data is stored in
 **Meilisearch** using two indexes (configurable via environment
 variables):
 

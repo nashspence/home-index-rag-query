@@ -1,14 +1,45 @@
 from __future__ import annotations
 
+from typing import Iterator, Optional, Sequence, Tuple
+
 from meilisearch import Client
 from langchain_community.vectorstores import Meilisearch as MeiliVector
 from langchain_community.embeddings import HuggingFaceEmbeddings
+from langchain.retrievers import ParentDocumentRetriever
+from langchain_core.stores import BaseStore
 
 from .config import settings
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 
 _client = None
+
+
+class MeiliDocStore(BaseStore[str, Document]):
+    """Read-only DocStore backed by a Meilisearch index."""
+
+    def __init__(self, client: Client, index_name: str) -> None:
+        self.index = client.index(index_name)
+
+    def mget(self, keys: Sequence[str]) -> list[Optional[Document]]:
+        docs: list[Optional[Document]] = []
+        for key in keys:
+            try:
+                data = self.index.get_document(key)
+            except Exception:
+                docs.append(None)
+                continue
+            docs.append(Document(page_content=data.get("content", ""), metadata=data))
+        return docs
+
+    def mset(self, key_value_pairs: Sequence[Tuple[str, Document]]) -> None:
+        raise NotImplementedError("This docstore is read only")
+
+    def mdelete(self, keys: Sequence[str]) -> None:
+        raise NotImplementedError("This docstore is read only")
+
+    def yield_keys(self, prefix: Optional[str] = None) -> Iterator[str]:
+        raise NotImplementedError("This docstore is read only")
 
 
 def get_meili_client() -> Client:
@@ -49,3 +80,20 @@ def get_vector_retriever():
         embedding_function=embeddings.embed_query,
     )
     return store.as_retriever()
+
+
+def get_parent_retriever():
+    """Return a retriever that links chunks to their parent documents."""
+    embeddings = HuggingFaceEmbeddings(model_name=settings.embed_model_name)
+    chunks_vs = MeiliVector(
+        index_name=settings.file_chunks_index,
+        url=settings.meili_url,
+        api_key=settings.meili_api_key,
+        embedding_function=embeddings.embed_query,
+    )
+    meta_store = MeiliDocStore(get_meili_client(), settings.files_index)
+    return ParentDocumentRetriever(
+        vectorstore=chunks_vs,
+        docstore=meta_store,
+        id_key="file_id",
+    )
