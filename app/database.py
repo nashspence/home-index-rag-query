@@ -120,10 +120,10 @@ def get_vector_retriever():
     """Return a retriever for semantic search of file chunks."""
     embeddings = HuggingFaceEmbeddings(model_name=settings.embed_model_name)
     store = MeiliVector(
+        embedding=embeddings,
         index_name=settings.file_chunks_index,
         url=settings.meili_url,
         api_key=settings.meili_api_key,
-        embedding_function=embeddings.embed_query,
     )
     return store.as_retriever()
 
@@ -132,10 +132,10 @@ def get_parent_retriever():
     """Return a retriever that links chunks to their parent documents."""
     embeddings = HuggingFaceEmbeddings(model_name=settings.embed_model_name)
     chunks_vs = MeiliVector(
+        embedding=embeddings,
         index_name=settings.file_chunks_index,
         url=settings.meili_url,
         api_key=settings.meili_api_key,
-        embedding_function=embeddings.embed_query,
     )
     meta_store = MeiliDocStore(get_meili_client(), settings.files_index)
     parent = ParentDocumentRetriever(
