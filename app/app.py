@@ -1,13 +1,16 @@
 import streamlit as st
 
-from langchain.chains import RetrievalQAWithSourcesChain
-
 from .config import settings
-from .database import (
-    search_index,
-    get_parent_retriever,
-)
+from .database import search_index
 from .llm import load_llm
+from .chain import build_qa_chain
+
+
+@st.cache_resource(show_spinner=False)
+def get_chain(model_name: str):
+    """Load model and return a QA chain."""
+    llm = load_llm(model_name)
+    return build_qa_chain(llm)
 
 
 def format_sources(hits: list[dict]) -> str:
@@ -27,11 +30,7 @@ def main():
     )
 
     if st.sidebar.button("Load model"):
-        llm = load_llm(model_name)
-        chain = RetrievalQAWithSourcesChain.from_chain_type(
-            llm, retriever=get_parent_retriever()
-        )
-        st.session_state["chain"] = chain
+        st.session_state["chain"] = get_chain(model_name)
         st.success(f"Loaded model {model_name}")
 
     chain = st.session_state.get("chain")
