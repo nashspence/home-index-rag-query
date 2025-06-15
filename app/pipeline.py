@@ -48,38 +48,77 @@ class FileDocument(BaseModel):
     )
 
 
-def _parse_date(value: str) -> float | tuple[float, float] | None:
-    """Return a UNIX timestamp or interval for a human-readable date string."""
-    try:
-        return datetime.fromisoformat(value).timestamp()
-    except Exception:
-        pass
+def _parse_date(value: str) -> float | tuple[float | None, float | None] | None:
+    """Return a UNIX timestamp or interval for a human-readable date string.
 
-    try:
-        from timefhuman.main import timefhuman
+    The function understands ``before`` and ``after`` prefixes as well as
+    ``on`` for an exact day. ``between`` expressions are returned as a tuple
+    ``(start, end)``. Open-ended ranges use ``None`` for the missing bound.
+    """
 
-        dts = timefhuman(value)
-        if not dts:
+    def _base_parse(val: str) -> float | tuple[float, float] | None:
+        try:
+            return datetime.fromisoformat(val).timestamp()
+        except Exception:
+            pass
+
+        try:
+            from timefhuman.main import timefhuman
+
+            dts = timefhuman(val)
+            if not dts:
+                return None
+
+            dt0 = dts[0]
+            # Handle explicit range e.g. "3p-4p" which returns [(start, end)]
+            if isinstance(dt0, tuple) and len(dt0) == 2:
+                start, end = dt0
+                if hasattr(start, "timestamp") and hasattr(end, "timestamp"):
+                    return start.timestamp(), end.timestamp()
+
+            # Handle "between" expressions which return [start, end]
+            if len(dts) == 2 and all(hasattr(x, "timestamp") for x in dts):
+                return dts[0].timestamp(), dts[1].timestamp()
+
+            # Default to first datetime
+            if hasattr(dt0, "timestamp"):
+                return dt0.timestamp()
+        except Exception:
+            pass
+
+        return None
+
+    val = value.strip()
+    lower = val.lower()
+
+    if lower.startswith("after "):
+        ts = _base_parse(val[6:])
+        if ts is None:
             return None
+        if isinstance(ts, tuple):
+            ts = ts[1]
+        return ts, None
 
-        dt0 = dts[0]
-        # Handle explicit range e.g. "3p-4p" which returns [(start, end)]
-        if isinstance(dt0, tuple) and len(dt0) == 2:
-            start, end = dt0
-            if hasattr(start, "timestamp") and hasattr(end, "timestamp"):
-                return start.timestamp(), end.timestamp()
+    if lower.startswith("before "):
+        ts = _base_parse(val[7:])
+        if ts is None:
+            return None
+        if isinstance(ts, tuple):
+            ts = ts[0]
+        return None, ts
 
-        # Handle "between" expressions which return [start, end]
-        if len(dts) == 2 and all(hasattr(x, "timestamp") for x in dts):
-            return dts[0].timestamp(), dts[1].timestamp()
+    if lower.startswith("on "):
+        ts = _base_parse(val[3:])
+        if ts is None:
+            return None
+        if isinstance(ts, tuple):
+            ts = ts[0]
+        dt = datetime.fromtimestamp(ts)
+        start = datetime(dt.year, dt.month, dt.day).timestamp()
+        end = start + 24 * 60 * 60
+        return start, end
 
-        # Default to first datetime
-        if hasattr(dt0, "timestamp"):
-            return dt0.timestamp()
-    except Exception:
-        pass
-
-    return None
+    return _base_parse(val)
 
 
 _geolocator: Nominatim | None = None
@@ -141,14 +180,26 @@ def query_pipeline(query: str):
             ts = _parse_date(result.ctime)
             if isinstance(ts, tuple):
                 start, end = ts
-                filters.append(f'ctime >= {int(start)} AND ctime <= {int(end)}')
+                parts = []
+                if start is not None:
+                    parts.append(f'ctime >= {int(start)}')
+                if end is not None:
+                    parts.append(f'ctime <= {int(end)}')
+                if parts:
+                    filters.append(" AND ".join(parts))
             elif ts is not None:
                 filters.append(f'ctime >= {int(ts)}')
         if result.mtime:
             ts = _parse_date(result.mtime)
             if isinstance(ts, tuple):
                 start, end = ts
-                filters.append(f'mtime >= {int(start)} AND mtime <= {int(end)}')
+                parts = []
+                if start is not None:
+                    parts.append(f'mtime >= {int(start)}')
+                if end is not None:
+                    parts.append(f'mtime <= {int(end)}')
+                if parts:
+                    filters.append(" AND ".join(parts))
             elif ts is not None:
                 filters.append(f'mtime >= {int(ts)}')
         if result.location and result.radius_km:
