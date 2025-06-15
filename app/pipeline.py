@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 
 from typing import Optional
 
@@ -16,15 +17,46 @@ from .config import settings
 class FileDocument(BaseModel):
     """Representation of a file stored in Meilisearch."""
 
-    id: str = Field(description="xxh64 hexadecimal digest")
-    type: str = Field(description="MIME type")
-    size: int = Field(description="File size in bytes")
-    paths: dict[str, float]
-    copies: int
-    mtime: float
-    next: str = ""
-    lat: Optional[float] = Field(default=None, description="Latitude")
-    lon: Optional[float] = Field(default=None, description="Longitude")
+    file_type: Optional[str] = Field(
+        default=None,
+        description="Single word file class such as 'video', 'audio', 'text', or 'archive'",
+    )
+    path: Optional[str] = Field(
+        default=None,
+        description="Snippet of the canonical file path to match",
+    )
+    ctime: Optional[str] = Field(
+        default=None,
+        description="Creation time or interval in human readable form",
+    )
+    mtime: Optional[str] = Field(
+        default=None,
+        description="Modification time or interval in human readable form",
+    )
+    content: Optional[str] = Field(
+        default=None, description="Content snippet used for vector search"
+    )
+    location: Optional[str] = Field(
+        default=None,
+        description="Named location associated with the document",
+    )
+    radius_km: Optional[float] = Field(
+        default=None,
+        description="Search radius in kilometres around the location",
+    )
+
+
+def _parse_date(value: str) -> float | None:
+    """Return a UNIX timestamp for an ISO formatted date string."""
+    try:
+        return datetime.fromisoformat(value).timestamp()
+    except Exception:
+        return None
+
+
+def _geocode(name: str) -> tuple[float | None, float | None]:
+    """Dummy location lookup returning ``(lat, lon)`` or ``(None, None)``."""
+    return None, None
 
 
 SCHEMA = FileDocument.model_json_schema()
@@ -47,8 +79,43 @@ def query_pipeline(query: str):
     parser = JsonOutputParser(pydantic_object=FileDocument)
     chain = PROMPT | llm | parser
     result = chain.invoke({"query": query})
+    search_terms = None
+    params: dict = {}
     if isinstance(result, FileDocument):
-        q = result.id
-    else:
-        q = getattr(result, "id", None) if isinstance(result, dict) else None
-    return search_index(settings.files_index, q or query, limit=5)
+        parts = [
+            result.path,
+            result.file_type,
+            result.location,
+            result.ctime,
+            result.mtime,
+            result.content,
+        ]
+        search_terms = " ".join(str(p) for p in parts if p)
+
+        filters = []
+        if result.file_type:
+            filters.append(f'CONTAINS(file_type, "{result.file_type}")')
+        if result.path:
+            filters.append(f'CONTAINS(path, "{result.path}")')
+        if result.ctime:
+            ts = _parse_date(result.ctime)
+            if ts is not None:
+                filters.append(f'ctime >= {int(ts)}')
+        if result.mtime:
+            ts = _parse_date(result.mtime)
+            if ts is not None:
+                filters.append(f'mtime >= {int(ts)}')
+        if result.location and result.radius_km:
+            lat, lon = _geocode(result.location)
+            if lat is not None and lon is not None:
+                m = int(result.radius_km * 1000)
+                filters.append(f'_geoRadius({lat}, {lon}, {m})')
+        if filters:
+            params["filter"] = " AND ".join(filters)
+
+    return search_index(
+        settings.files_index,
+        search_terms or query,
+        limit=5,
+        **params,
+    )
