@@ -80,3 +80,32 @@ def test_geocode_failure(monkeypatch):
     monkeypatch.setattr("app.pipeline.Nominatim", lambda user_agent: DummyLocator())
     lat, lon = _geocode("unknown")
     assert lat is None and lon is None
+
+
+def test_query_pipeline_radius_miles(monkeypatch):
+    from app.pipeline import query_pipeline, FileDocument
+    import app.pipeline as pipeline_module
+
+    class DummyRunnable:
+        def __or__(self, other):
+            return self
+
+        def invoke(self, _):
+            return FileDocument(location="loc", radius_miles=1.0)
+
+    monkeypatch.setattr(pipeline_module, "PROMPT", DummyRunnable())
+    monkeypatch.setattr(pipeline_module, "load_llm", lambda *a, **kw: DummyRunnable())
+    monkeypatch.setattr(pipeline_module, "JsonOutputParser", lambda *a, **kw: DummyRunnable())
+    monkeypatch.setattr(pipeline_module, "_geocode", lambda name: (1.0, 2.0))
+
+    captured = {}
+
+    def dummy_search_index(index, query, limit=5, **params):
+        captured.update(params)
+        return []
+
+    monkeypatch.setattr(pipeline_module, "search_index", dummy_search_index)
+
+    query_pipeline("q")
+
+    assert captured.get("filter") == "_geoRadius(1.0, 2.0, 1609)"
