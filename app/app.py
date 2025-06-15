@@ -37,12 +37,7 @@ def render_source(doc: Document, *, base_download_dir: str = "/downloads/") -> N
         st.markdown(f"[View full-size]({url})")
     else:
         label = url.split("/")[-1]
-        st.download_button(
-            label=f"Download {label}",
-            data=None,
-            file_name=label,
-            url=url,
-        )
+        st.markdown(f"[Download {label}]({url})")
 
 
 def main():
