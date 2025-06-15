@@ -46,12 +46,38 @@ class FileDocument(BaseModel):
     )
 
 
-def _parse_date(value: str) -> float | None:
-    """Return a UNIX timestamp for an ISO formatted date string."""
+def _parse_date(value: str) -> float | tuple[float, float] | None:
+    """Return a UNIX timestamp or interval for a human-readable date string."""
     try:
         return datetime.fromisoformat(value).timestamp()
     except Exception:
-        return None
+        pass
+
+    try:
+        from timefhuman.main import timefhuman
+
+        dts = timefhuman(value)
+        if not dts:
+            return None
+
+        dt0 = dts[0]
+        # Handle explicit range e.g. "3p-4p" which returns [(start, end)]
+        if isinstance(dt0, tuple) and len(dt0) == 2:
+            start, end = dt0
+            if hasattr(start, "timestamp") and hasattr(end, "timestamp"):
+                return start.timestamp(), end.timestamp()
+
+        # Handle "between" expressions which return [start, end]
+        if len(dts) == 2 and all(hasattr(x, "timestamp") for x in dts):
+            return dts[0].timestamp(), dts[1].timestamp()
+
+        # Default to first datetime
+        if hasattr(dt0, "timestamp"):
+            return dt0.timestamp()
+    except Exception:
+        pass
+
+    return None
 
 
 def _geocode(name: str) -> tuple[float | None, float | None]:
@@ -99,11 +125,17 @@ def query_pipeline(query: str):
             filters.append(f'CONTAINS(path, "{result.path}")')
         if result.ctime:
             ts = _parse_date(result.ctime)
-            if ts is not None:
+            if isinstance(ts, tuple):
+                start, end = ts
+                filters.append(f'ctime >= {int(start)} AND ctime <= {int(end)}')
+            elif ts is not None:
                 filters.append(f'ctime >= {int(ts)}')
         if result.mtime:
             ts = _parse_date(result.mtime)
-            if ts is not None:
+            if isinstance(ts, tuple):
+                start, end = ts
+                filters.append(f'mtime >= {int(start)} AND mtime <= {int(end)}')
+            elif ts is not None:
                 filters.append(f'mtime >= {int(ts)}')
         if result.location and result.radius_km:
             lat, lon = _geocode(result.location)
