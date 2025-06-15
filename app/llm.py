@@ -9,6 +9,7 @@ from langchain_core.language_models.fake import FakeListLLM
 from .config import settings
 
 _cached_llm = None
+_cached_model_name: str | None = None
 
 
 def load_llm(model_name: str | None = None) -> BaseChatModel:
@@ -18,11 +19,11 @@ def load_llm(model_name: str | None = None) -> BaseChatModel:
     Otherwise a small HuggingFace model is loaded via ``transformers`` for
     compatibility with the tests.
     """
-    global _cached_llm
-    if _cached_llm is not None and model_name == settings.llm_model_name:
-        return _cached_llm
-
+    global _cached_llm, _cached_model_name
     model_name = model_name or settings.llm_model_name
+
+    if _cached_llm is not None and model_name == _cached_model_name:
+        return _cached_llm
 
     if model_name.endswith(".gguf"):
         llm = ChatLlamaCpp(
@@ -50,4 +51,5 @@ def load_llm(model_name: str | None = None) -> BaseChatModel:
         llm = HuggingFacePipeline(pipeline=gen_pipeline)
 
     _cached_llm = llm
+    _cached_model_name = model_name
     return llm
