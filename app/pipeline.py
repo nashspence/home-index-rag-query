@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 from datetime import datetime
 
+from geopy.geocoders import Nominatim
+
 from typing import Optional
 
 from langchain_core.prompts import ChatPromptTemplate
@@ -80,9 +82,21 @@ def _parse_date(value: str) -> float | tuple[float, float] | None:
     return None
 
 
+_geolocator: Nominatim | None = None
+
+
 def _geocode(name: str) -> tuple[float | None, float | None]:
-    """Dummy location lookup returning ``(lat, lon)`` or ``(None, None)``."""
-    return None, None
+    """Look up a location name and return ``(lat, lon)`` coordinates."""
+    global _geolocator
+    if _geolocator is None:
+        _geolocator = Nominatim(user_agent="home-index-rag-query")
+    try:
+        location = _geolocator.geocode(name)
+    except Exception:
+        return None, None
+    if location is None:
+        return None, None
+    return location.latitude, location.longitude
 
 
 SCHEMA = FileDocument.model_json_schema()
