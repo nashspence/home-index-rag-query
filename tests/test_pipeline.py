@@ -30,6 +30,30 @@ def test_parse_human_between(monkeypatch):
     )
 
 
+def test_parse_after(monkeypatch):
+    fixed = datetime(2020, 1, 10, 12, 0, 0)
+    monkeypatch.setattr(tfm.DEFAULT_CONFIG, "now", fixed)
+    rng = _parse_date("after jan 5")
+    assert rng == (datetime(2020, 1, 5).timestamp(), None)
+
+
+def test_parse_before(monkeypatch):
+    fixed = datetime(2020, 1, 10, 12, 0, 0)
+    monkeypatch.setattr(tfm.DEFAULT_CONFIG, "now", fixed)
+    rng = _parse_date("before jan 5")
+    assert rng == (None, datetime(2020, 1, 5).timestamp())
+
+
+def test_parse_on(monkeypatch):
+    fixed = datetime(2020, 1, 10, 12, 0, 0)
+    monkeypatch.setattr(tfm.DEFAULT_CONFIG, "now", fixed)
+    rng = _parse_date("on jan 5")
+    assert rng == (
+        datetime(2020, 1, 5).timestamp(),
+        datetime(2020, 1, 5).timestamp() + 24 * 60 * 60,
+    )
+
+
 def test_geocode_success(monkeypatch):
     class Dummy:
         latitude = 1.23
