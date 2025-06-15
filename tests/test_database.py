@@ -35,7 +35,7 @@ class DummyRetriever(BaseRetriever):
 def test_canonical_retriever():
     dummy = DummyRetriever()
     wrapper = CanonicalURLRetriever(dummy, base_url="https://domain")
-    docs = wrapper.get_relevant_documents("q")
+    docs = wrapper.invoke("q")
     assert docs[0].metadata["url"].endswith("b.txt")
     assert docs[0].metadata["paths"][0].startswith("https://domain")
     assert isinstance(docs[0].metadata["mtime"], str)
