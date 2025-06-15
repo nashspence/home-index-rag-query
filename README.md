@@ -6,7 +6,8 @@ It targets a default setup similar to a MacBook M4 Pro with 24 GB of
 RAM but can be configured for other environments.
 
 The UI is built with **Streamlit** and uses **LangChain** with a
-HuggingFace model for question answering. Retrieval links content chunks
+`llama-cpp-python` powered Mistral model for question answering. Retrieval
+links content chunks
 back to their source documents via `ParentDocumentRetriever`. Data is stored in
 **Meilisearch** using two indexes (configurable via environment
 variables):
@@ -17,7 +18,8 @@ variables):
 
 ## Features
 
-- Downloads the selected language model from HuggingFace on first run.
+- Downloads the selected model on first run. When the model path ends with
+  `.gguf` it will be loaded using `ChatLlamaCpp` from `llama-cpp-python`.
 - Configurable model and Meilisearch connection via environment
   variables or the Streamlit sidebar.
 - Simple RAG pipeline that searches the `file_chunks` index and feeds the
@@ -27,6 +29,8 @@ variables):
 
 ```bash
 pip install -r requirements.txt
+CMAKE_ARGS="-DLLAMA_METAL=on" FORCE_CMAKE=1 pip install --upgrade \
+  --force-reinstall llama-cpp-python
 ```
 
 ## Usage
@@ -37,16 +41,17 @@ Start the Streamlit app:
 streamlit run app/app.py
 ```
 
-Use the sidebar to load the desired HuggingFace model (defaults to the
+Use the sidebar to load the desired model (defaults to the
 `mistralai/Mistral-7B-v0.1` checkpoint, which requires significant
-resources). Enter a question in the text box and the app will
+resources). When a `.gguf` path is provided the model is loaded with
+`ChatLlamaCpp`. Enter a question in the text box and the app will
 search Meilisearch and generate an answer with sources.
 
 ### Configuration
 
 Settings can be overridden with environment variables:
 
-- `LLM_MODEL_NAME` – HuggingFace model id
+ - `LLM_MODEL_NAME` – model id or path to a `.gguf` file
 - `EMBED_MODEL_NAME` – model for generating embeddings
 - `MEILI_URL` – URL to the Meilisearch instance
 - `MEILI_API_KEY` – optional API key

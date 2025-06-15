@@ -80,7 +80,7 @@ class CanonicalURLRetriever(BaseRetriever):
         super().__init__(wrapped=wrapped, base_url=base_url.rstrip("/"))
 
     def _get_relevant_documents(self, query: str, run_manager=None):
-        docs = self.wrapped.get_relevant_documents(query)
+        docs = self.wrapped.invoke(query)
         for d in docs:
             paths_map = d.metadata.get("paths")
             if isinstance(paths_map, dict):
