@@ -11,6 +11,7 @@ from langchain_core.stores import BaseStore
 from .config import settings
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
+from pydantic import ConfigDict
 from urllib.parse import urljoin
 from datetime import datetime, UTC
 
@@ -52,10 +53,12 @@ def get_meili_client() -> Client:
     return _client
 
 
-def search_index(index_name: str, query: str, limit: int = 5) -> list[dict]:
+def search_index(index_name: str, query: str, limit: int = 5, **params) -> list[dict]:
+    """Run a Meilisearch query and return hits."""
     client = get_meili_client()
     index = client.index(index_name)
-    result = index.search(query, {"limit": limit})
+    search_params = {"limit": limit, **params}
+    result = index.search(query, search_params)
     return result.get("hits", [])
 
 
@@ -73,8 +76,7 @@ class CanonicalURLRetriever(BaseRetriever):
     wrapped: BaseRetriever
     base_url: str
 
-    class Config:
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def __init__(self, wrapped: BaseRetriever, base_url: str) -> None:
         super().__init__(wrapped=wrapped, base_url=base_url.rstrip("/"))
