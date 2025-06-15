@@ -1,7 +1,9 @@
 import streamlit as st
+from urllib.parse import urljoin
+
+from langchain_core.documents import Document
 
 from .config import settings
-from .database import search_index
 from .llm import load_llm
 from .chain import build_qa_chain
 
@@ -12,14 +14,35 @@ def get_chain(model_name: str):
     llm = load_llm(model_name)
     return build_qa_chain(llm)
 
+def render_source(doc: Document, *, base_download_dir: str = "/downloads/") -> None:
+    """Render a document source in Streamlit."""
+    mime = str(doc.metadata.get("mime", ""))
+    url = doc.metadata.get("url")
+    if not url:
+        path = doc.metadata.get("path")
+        if path:
+            url = urljoin(settings.files_domain + "/", str(path).lstrip("/"))
+    if not url:
+        return
 
-def format_sources(hits: list[dict]) -> str:
-    lines = []
-    for h in hits:
-        file_id = h.get("file_id") or h.get("id")
-        path = h.get("path")
-        lines.append(f"- {file_id}: {path}")
-    return "\n".join(lines)
+    if mime.startswith("video"):
+        t0 = int(doc.metadata.get("start", 0))
+        st.video(url, start_time=t0)
+        st.markdown(f"[Open fullscreen]({url}#t={t0})")
+    elif mime.startswith("audio"):
+        st.audio(url)
+        st.markdown(f"[Download clip]({url})")
+    elif mime.startswith("image"):
+        st.image(url)
+        st.markdown(f"[View full-size]({url})")
+    else:
+        label = url.split("/")[-1]
+        st.download_button(
+            label=f"Download {label}",
+            data=None,
+            file_name=label,
+            url=url,
+        )
 
 
 def main():
@@ -35,11 +58,13 @@ def main():
 
     chain = st.session_state.get("chain")
     if query and chain:
-        answer = chain.run(query)
-        st.write(answer)
-        hits = search_index(settings.file_chunks_index, query, limit=5)
-        st.markdown("## Sources")
-        st.text(format_sources(hits))
+        result = chain.invoke({"question": query})
+        answer = result.get("answer", "") if isinstance(result, dict) else str(result)
+        docs = result.get("source_documents", []) if isinstance(result, dict) else []
+        with st.chat_message("assistant"):
+            st.markdown(answer)
+            for d in docs:
+                render_source(d)
     elif query:
         st.warning("Load the model first using the sidebar.")
 
