@@ -42,9 +42,9 @@ class FileDocument(BaseModel):
         default=None,
         description="Named location associated with the document",
     )
-    radius_km: Optional[float] = Field(
+    radius_miles: Optional[float] = Field(
         default=None,
-        description="Search radius in kilometres around the location",
+        description="Search radius in miles around the location",
     )
 
 
@@ -202,10 +202,10 @@ def query_pipeline(query: str):
                     filters.append(" AND ".join(parts))
             elif ts is not None:
                 filters.append(f'mtime >= {int(ts)}')
-        if result.location and result.radius_km:
+        if result.location and result.radius_miles:
             lat, lon = _geocode(result.location)
             if lat is not None and lon is not None:
-                m = int(result.radius_km * 1000)
+                m = int(result.radius_miles * 1609.34)
                 filters.append(f'_geoRadius({lat}, {lon}, {m})')
         if filters:
             params["filter"] = " AND ".join(filters)
