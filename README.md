@@ -25,8 +25,9 @@ variables):
   variables or the Streamlit sidebar. ([test](tests/test_config.py))
 - Simple RAG pipeline that searches the `file_chunks` index and feeds the
   results to the model. ([test](tests/test_chain.py))
-- Dockerised integration test runs in GitHub Actions, starting the Streamlit
-  app and loading it in a headless browser. ([test](tests/test_streamlit_docker.py))
+- Dockerised integration test runs in GitHub Actions using `docker-compose`
+  to start the Streamlit app and load it in a headless browser.
+  ([test](tests/test_streamlit_docker.py))
 
 ## Installation
 
