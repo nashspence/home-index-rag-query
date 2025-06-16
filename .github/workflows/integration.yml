@@ -42,10 +42,13 @@ jobs:
       - name: Check app exit code
         if: always()
         run: |
-          EXIT=$(docker inspect $(docker compose ps -q app) --format '{{.State.ExitCode}}')
-          if [ "$EXIT" != "0" ]; then
-            echo "App container exited with code $EXIT" >&2
-            exit "$EXIT"
+          CID=$(docker compose ps -q app)
+          if [ -n "$CID" ]; then
+            EXIT=$(docker inspect "$CID" --format '{{.State.ExitCode}}')
+            if [ "$EXIT" != "0" ]; then
+              echo "App container exited with code $EXIT" >&2
+              exit "$EXIT"
+            fi
           fi
       - name: Stop app
         if: always()
