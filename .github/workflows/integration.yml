@@ -25,13 +25,28 @@ jobs:
         run: |
           for i in {1..30}; do
             if curl -s http://localhost:8501 >/dev/null 2>&1; then
-              break
+              exit 0
             fi
             sleep 2
           done
+          echo "Streamlit app did not start in time" >&2
+          docker compose logs
+          exit 1
       - name: Run tests
         run: |
           pytest tests/test_streamlit_docker.py
+      - name: Dump server logs
+        if: always()
+        run: |
+          docker compose logs
+      - name: Check app exit code
+        if: always()
+        run: |
+          EXIT=$(docker inspect $(docker compose ps -q app) --format '{{.State.ExitCode}}')
+          if [ "$EXIT" != "0" ]; then
+            echo "App container exited with code $EXIT" >&2
+            exit "$EXIT"
+          fi
       - name: Stop app
         if: always()
         run: |
