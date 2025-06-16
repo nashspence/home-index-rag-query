@@ -20,7 +20,7 @@ jobs:
           playwright install --with-deps
       - name: Build and start app
         run: |
-          docker-compose up -d --build
+          docker compose up -d --build
       - name: Wait for app
         run: |
           for i in {1..30}; do
@@ -35,4 +35,4 @@ jobs:
       - name: Stop app
         if: always()
         run: |
-          docker-compose down
+          docker compose down
