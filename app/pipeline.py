@@ -11,9 +11,9 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from pydantic import BaseModel, Field
 
-from .llm import load_llm
-from .database import search_index
-from .config import settings
+from app.llm import load_llm
+from app.database import search_index
+from app.config import settings
 
 
 class FileDocument(BaseModel):

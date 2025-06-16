@@ -8,7 +8,7 @@ from langchain_community.embeddings import HuggingFaceEmbeddings
 from langchain.retrievers import ParentDocumentRetriever
 from langchain_core.stores import BaseStore
 
-from .config import settings
+from app.config import settings
 from langchain_core.documents import Document
 from langchain_core.retrievers import BaseRetriever
 from pydantic import ConfigDict

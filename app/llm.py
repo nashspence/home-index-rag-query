@@ -6,7 +6,7 @@ from langchain_community.chat_models import ChatLlamaCpp
 from langchain_core.language_models import BaseChatModel
 from langchain_core.language_models.fake import FakeListLLM
 
-from .config import settings
+from app.config import settings
 
 _cached_llm = None
 _cached_model_name: str | None = None

@@ -5,8 +5,8 @@ from __future__ import annotations
 from langchain.chains import RetrievalQAWithSourcesChain
 from langchain_core.language_models import BaseChatModel
 
-from .database import get_parent_retriever
-from .llm import load_llm
+from app.database import get_parent_retriever
+from app.llm import load_llm
 
 
 def build_qa_chain(model: BaseChatModel | None = None) -> RetrievalQAWithSourcesChain:

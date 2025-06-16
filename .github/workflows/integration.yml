@@ -1,0 +1,56 @@
+name: Integration Test
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install --no-cache-dir -r requirements.txt
+          pip install playwright pytest
+          playwright install --with-deps
+      - name: Build and start app
+        run: |
+          docker compose up -d --build
+      - name: Wait for app
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:8501 >/dev/null 2>&1; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "Streamlit app did not start in time" >&2
+          docker compose logs
+          exit 1
+      - name: Run tests
+        run: |
+          pytest tests/test_streamlit_docker.py
+      - name: Dump server logs
+        if: always()
+        run: |
+          docker compose logs
+      - name: Check app exit code
+        if: always()
+        run: |
+          CID=$(docker compose ps -q app)
+          if [ -n "$CID" ]; then
+            EXIT=$(docker inspect "$CID" --format '{{.State.ExitCode}}')
+            if [ "$EXIT" != "0" ]; then
+              echo "App container exited with code $EXIT" >&2
+              exit "$EXIT"
+            fi
+          fi
+      - name: Stop app
+        if: always()
+        run: |
+          docker compose down
