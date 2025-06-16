@@ -20,10 +20,13 @@ variables):
 
 - Downloads the selected model on first run. When the model path ends with
   `.gguf` it will be loaded using `ChatLlamaCpp` from `llama-cpp-python`.
+  ([test](tests/test_llm.py))
 - Configurable model and Meilisearch connection via environment
-  variables or the Streamlit sidebar.
+  variables or the Streamlit sidebar. ([test](tests/test_config.py))
 - Simple RAG pipeline that searches the `file_chunks` index and feeds the
-  results to the model.
+  results to the model. ([test](tests/test_chain.py))
+- Dockerised integration test that starts the Streamlit app and loads it in a
+  headless browser. ([test](tests/test_streamlit_docker.py))
 
 ## Installation
 

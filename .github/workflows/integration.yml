@@ -1,0 +1,44 @@
+name: Integration Test
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      docker:
+        image: docker:24.0.6-dind
+        privileged: true
+        options: >-
+          --entrypoint ''
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          pip install --no-cache-dir -r requirements.txt
+          pip install playwright pytest
+          playwright install --with-deps
+      - name: Build and start app
+        run: |
+          docker-compose up -d --build
+      - name: Wait for app
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:8501 >/dev/null 2>&1; then
+              break
+            fi
+            sleep 2
+          done
+      - name: Run tests
+        run: |
+          pytest tests/test_streamlit_docker.py
+      - name: Stop app
+        if: always()
+        run: |
+          docker-compose down
