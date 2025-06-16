@@ -43,7 +43,7 @@ CMAKE_ARGS="-DLLAMA_METAL=on" FORCE_CMAKE=1 pip install --upgrade \
 Start the Streamlit app:
 
 ```bash
-PYTHONPATH=. streamlit run app/app.py
+PYTHONPATH=. streamlit run app/main.py
 ```
 
 Use the sidebar to load the desired model (defaults to the
