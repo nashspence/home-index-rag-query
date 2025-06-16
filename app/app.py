@@ -3,9 +3,9 @@ from urllib.parse import urljoin
 
 from langchain_core.documents import Document
 
-from .config import settings
-from .llm import load_llm
-from .chain import build_qa_chain
+from app.config import settings
+from app.llm import load_llm
+from app.chain import build_qa_chain
 
 
 @st.cache_resource(show_spinner=False)
