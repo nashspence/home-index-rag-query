@@ -3,4 +3,5 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-CMD ["streamlit", "run", "app.app", "--server.headless", "true", "--server.address", "0.0.0.0", "--server.port", "8501"]
+ENV PYTHONPATH=/app
+CMD ["streamlit", "run", "app/app.py", "--server.headless=true", "--server.address=0.0.0.0", "--server.port=8501"]
