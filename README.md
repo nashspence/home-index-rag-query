@@ -18,17 +18,22 @@ variables):
 
 ## Features
 
-- Downloads the selected model on first run. When the model path ends with
-  `.gguf` it will be loaded using `ChatLlamaCpp` from `llama-cpp-python`.
+- Downloads the selected model on first run and caches the loaded instance.
+  `.gguf` files are loaded with `ChatLlamaCpp` from `llama-cpp-python`.
   ([test](tests/test_llm.py))
 - Configurable model and Meilisearch connection via environment
   variables or the Streamlit sidebar. ([test](tests/test_config.py))
-- Simple RAG pipeline that searches the `file_chunks` index and feeds the
-  results to the model. ([test](tests/test_chain.py))
-- Dockerised integration test runs in GitHub Actions.
-  It uses `docker compose` to start the Streamlit app and Playwright
-  to load the page in a headless browser.
-  ([test](tests/test_streamlit_docker.py))
+- Parent-document RAG pipeline that searches `file_chunks` and returns
+  source documents. ([test](tests/test_chain.py))
+- Canonical URL retrieval linking chunks back to their parent documents.
+  ([test](tests/test_database.py))
+- Lexical metadata search of the `files` index via Meilisearch.
+  ([test](tests/test_database.py))
+- Natural language query parser with date range handling and
+  location based radius search. ([test](tests/test_pipeline.py))
+- Streamlit UI renders video, audio and image sources with download links.
+  *(untested)*
+- Additional retrievers for semantic search of file chunks. *(untested)*
 
 ## Installation
 
@@ -74,3 +79,6 @@ pytest
 
 These tests verify configuration loading, model initialisation and basic
 Meilisearch client setup.
+
+A Docker-based integration test ensures the Streamlit UI starts correctly.
+See [tests/test_streamlit_docker.py](tests/test_streamlit_docker.py).
